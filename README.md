@@ -39,6 +39,7 @@ Binaries are written to `bin/`:
 
 - `test_arm_lowlevel` — low-level FOC / stop / home / goto commands
 - `calibrate_joints` — joint calibration tool (URDF ↔ motor frame)
+- `demo_arm_motion` — pre-programmed joint motion demo
 
 ### Usage
 
@@ -64,6 +65,15 @@ cd bin
 ```
 
 **Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run. Ctrl-C sends stop (mode 0) and exits for long-running modes.
+
+**Run the pre-programmed motion demo:**
+
+```bash
+cd bin
+./demo_arm_motion --port /dev/ttyUSB3
+```
+
+The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
 
 **Calibrate joints** (pose the arm at the desired URDF zero first):
 
