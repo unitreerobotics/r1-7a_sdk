@@ -298,7 +298,7 @@ void ArmMotorBus::step(const std::array<ArmJointCmd, kArmJointCount>& cmds) {
             impl_->serial.write(packet);
             // Half-duplex RS485: small gap so replies don't collide with next TX.
             if (i + 1 < kArmJointCount + 1) {
-                std::this_thread::sleep_for(std::chrono::microseconds(115));
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
             }
         } catch (const std::exception& e) {
             std::cerr << "[ArmMotorBus] write joint " << i
