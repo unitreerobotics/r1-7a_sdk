@@ -64,7 +64,7 @@ cd bin
 ./test_arm_lowlevel --goto -r --q 0 0 0 0 0 0 0 --kp 60
 ```
 
-**Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run; add `-r` or `-l` to select the hand (defaults to right). Ctrl-C sends stop (mode 0) and exits for long-running modes.
+**Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run; add `-r` or `-l` to select the hand. Ctrl-C sends stop (mode 0) and exits for long-running modes.
 
 **Run the pre-programmed motion demo:**
 
@@ -73,7 +73,7 @@ cd bin
 ./demo_arm_motion -r --port /dev/ttyUSB3
 ```
 
-The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand (defaults to right), `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
+The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand, `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
 
 ### Notice
 
