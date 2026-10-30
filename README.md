@@ -75,14 +75,6 @@ cd bin
 
 The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand (defaults to right), `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
 
-**Calibrate joints** (pose the arm at the desired URDF zero first):
-
-```bash
-./calibrate_joints --port /dev/ttyUSB3 --out ../config/joint_calib_right.txt
-```
-
-Calibration formula: `urdf = dir * scale * motor + offset`. The left-hand file (`config/joint_calib_left.txt`) mirrors the right-hand file by negating `dir` and `offset` for every joint; recalibrate it with `calibrate_joints --out ../config/joint_calib_left.txt` against the actual left arm for accurate offsets.
-
 ### Notice
 
 This package drives a 7-DOF R1 arm over one serial bus via the vendored `thirdparty/motor_controller` (IM6014). Public `q` / `dq` / `tau` use the URDF frame; conversion happens at the `ArmMotorBus` edge.
