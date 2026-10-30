@@ -43,45 +43,45 @@ Binaries are written to `bin/`:
 
 ### Usage
 
-Default serial port is `/dev/ttyUSB3`, baudrate `6000000`. Joint calibration is loaded from `config/joint_calib.txt` (path relative to the working directory; when run from `bin/`, the default `../config/joint_calib.txt` is used).
+Default serial port is `/dev/ttyUSB3`, baudrate `6000000`. `test_arm_lowlevel` and `demo_arm_motion` accept an optional hand flag: `-r` / `--right` (loads `config/joint_calib_right.txt`, the default when no flag is given) or `-l` / `--left` (loads `config/joint_calib_left.txt`, a dir/offset-mirrored copy of the right-hand calib). Joint calibration paths are relative to the working directory; when run from `bin/`, the default `../config/...` paths are used.
 
 **Hold current pose (FOC):**
 
 ```bash
 cd bin
-./test_arm_lowlevel --foc --port /dev/ttyUSB3
+./test_arm_lowlevel --foc -r --port /dev/ttyUSB3
 ```
 
 **Move to URDF zero (home):**
 
 ```bash
-./test_arm_lowlevel --home --kp 60
+./test_arm_lowlevel --home -r --kp 60
 ```
 
 **Move to a target pose (goto):**
 
 ```bash
-./test_arm_lowlevel --goto --q 0 0 0 0 0 0 0 --kp 60
+./test_arm_lowlevel --goto -r --q 0 0 0 0 0 0 0 --kp 60
 ```
 
-**Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run. Ctrl-C sends stop (mode 0) and exits for long-running modes.
+**Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run; add `-r` or `-l` to select the hand (defaults to right). Ctrl-C sends stop (mode 0) and exits for long-running modes.
 
 **Run the pre-programmed motion demo:**
 
 ```bash
 cd bin
-./demo_arm_motion --port /dev/ttyUSB3
+./demo_arm_motion -r --port /dev/ttyUSB3
 ```
 
-The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
+The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand (defaults to right), `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
 
 **Calibrate joints** (pose the arm at the desired URDF zero first):
 
 ```bash
-./calibrate_joints --port /dev/ttyUSB3 --out ../config/joint_calib.txt
+./calibrate_joints --port /dev/ttyUSB3 --out ../config/joint_calib_right.txt
 ```
 
-Calibration formula: `urdf = dir * scale * motor + offset`.
+Calibration formula: `urdf = dir * scale * motor + offset`. The left-hand file (`config/joint_calib_left.txt`) mirrors the right-hand file by negating `dir` and `offset` for every joint; recalibrate it with `calibrate_joints --out ../config/joint_calib_left.txt` against the actual left arm for accurate offsets.
 
 ### Notice
 

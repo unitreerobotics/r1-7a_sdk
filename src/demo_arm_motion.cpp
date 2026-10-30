@@ -25,11 +25,13 @@ void onSignal(int) {
 }
 
 // URDF joint limits (rad); index 0 = base joint (J1) ... 6 = wrist end (J7).
-constexpr JointArray kLowerLimit = {-2.723f, 0.f, -0.349f, 0.f, -2.269f, -0.524f, -1.571f};
-constexpr JointArray kUpperLimit = {2.723f, 3.1416f, 3.491f, 3.1415f, 2.269f, 0.524f, 1.571f};
+constexpr JointArray kLowerLimit = {-2.723f, 0.f, -0.349f, 0.f, -2.269f, -0.785f, -1.571f};
+constexpr JointArray kUpperLimit = {2.723f, 3.1416f, 3.491f, 3.1415f, 2.269f, 0.785f, 1.571f};
 
 constexpr float kPi = 3.14159265f;
 constexpr int kFirstWristJoint = 4;  // joints 4..6 use --wrist-speed
+
+enum class Hand { None, Right, Left };
 
 struct Options {
     std::string port = "/dev/ttyUSB3";
@@ -43,11 +45,12 @@ struct Options {
     int rate_hz = 100;
     int pause_ms = 150;
     int limit_pause_ms = 50;  // pause at min/max limit before reversing
+    Hand hand = Hand::None;
 };
 
 void printUsage(const char* argv0) {
     std::cout
-        << "Usage: " << argv0 << " [options]\n"
+        << "Usage: " << argv0 << " [-r|-l] [options]\n"
         << "Demo sequence (joint 0 = base ... joint 6 = wrist end):\n"
         << "  1. joint 0 -> -2.7 rad and joint 3 -> 1.0 rad together\n"
         << "  2. joint 6 -> min limit -> max limit -> 0\n"
@@ -55,14 +58,17 @@ void printUsage(const char* argv0) {
         << "  4. joint 4 -> min limit -> max limit -> 0\n"
         << "  5. joint 1 -> 1.5 and joint 3 -> 3.1 together\n"
         << "  6. joint 0 -> 0, joint 1 -> 0, joint 3 -> 1.0 together\n"
-        << "  7. joint 1 -> 1.5 and joint 3 -> 3.1 together\n"
-        << "  8. joint 2 -> 3.4\n"
-        << "  9. joint 0 -> 2.7, joints 1/2 -> 0, joint 3 -> 1.0 together\n"
+        // 7. joint 1 -> 1.5 and joint 3 -> 3.1 together (disabled)
+        // 8. joint 2 -> 3.4 (disabled)
+        // 9. joint 0 -> 2.7, joints 1/2 -> 0, joint 3 -> 1.0 together (disabled)
         << " 10. joint 0 -> 0 and joint 3 -> 0.5 together\n"
         << " 11. joint 4 -> max limit, then joint 3: 0.5 -> 2.0 -> 0.5, "
            "repeated 3 times\n"
         << " 12. all joints -> 0\n"
         << " 13. stop (mode 0) and exit\n"
+        << "Hand (optional, default None):\n"
+        << "  -r, --right       right arm (calib " << kRightJointCalibPath << ")\n"
+        << "  -l, --left        left arm (calib " << kLeftJointCalibPath << ")\n"
         << "Options:\n"
         << "  --port PATH       serial device (default /dev/ttyUSB3)\n"
         << "  --baud N          baudrate (default " << kArmDefaultBaudrate << ")\n"
@@ -84,6 +90,18 @@ bool parseArgs(int argc, char** argv, Options& opt) {
         if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
             printUsage(argv[0]);
             return false;
+        } else if (std::strcmp(argv[i], "-r") == 0 || std::strcmp(argv[i], "--right") == 0) {
+            if (opt.hand != Hand::None) {
+                std::cerr << "Use only one of -r / -l\n";
+                return false;
+            }
+            opt.hand = Hand::None;
+        } else if (std::strcmp(argv[i], "-l") == 0 || std::strcmp(argv[i], "--left") == 0) {
+            if (opt.hand != Hand::None) {
+                std::cerr << "Use only one of -r / -l\n";
+                return false;
+            }
+            opt.hand = Hand::Left;
         } else if (std::strcmp(argv[i], "--port") == 0 && has_val) {
             opt.port = argv[++i];
         } else if (std::strcmp(argv[i], "--baud") == 0 && has_val) {
@@ -114,6 +132,9 @@ bool parseArgs(int argc, char** argv, Options& opt) {
     }
     if (opt.rate_hz <= 0) {
         opt.rate_hz = 100;
+    }
+    if (opt.hand == Hand::None) {
+        opt.hand = Hand::Right;  // default to right hand
     }
     opt.speed = std::max(0.01f, opt.speed);
     opt.wrist_speed = std::max(0.01f, opt.wrist_speed);
@@ -389,12 +410,15 @@ StepResult runSequence(MotionDemo& demo, const Options& opt) {
         {{{4, 0.f}}, "joint 4 -> 0", pause},
         {{{1, 1.5f}, {3, 3.1f}}, "joint 1 -> 1.5, joint 3 -> 3.1", pause},
         {{{0, 0.f}, {1, 0.f}, {3, 1.0f}},
-         "joint 0 -> 0, joint 1 -> 0, joint 3 -> 1.0", pause},
-        {{{1, 1.5f}, {3, 3.1f}}, "joint 1 -> 1.5, joint 3 -> 3.1", pause},
-        {{{2, 3.4f}}, "joint 2 -> 3.4", pause},
-        {{{0, 2.7f}, {1, 0.f}, {2, 0.f}, {3, 1.0f}},
-         "joint 0 -> 2.7, joint 1 -> 0, joint 2 -> 0, joint 3 -> 1.0", pause},
-        {{{0, 0.f}, {3, 0.5f}}, "joint 0 -> 0, joint 3 -> 0.5", pause},
+         "joint 0 -> 0, joint 1 -> 0, joint 3 -> 1.0", pause, opt.speed * 0.5f},
+        // 7. joint 1 -> 1.5 and joint 3 -> 3.1 together (disabled)
+        // {{{1, 1.5f}, {3, 3.1f}}, "joint 1 -> 1.5, joint 3 -> 3.1", pause},
+        // 8. joint 2 -> 3.4 (disabled)
+        // {{{2, 3.4f}}, "joint 2 -> 3.4", pause},
+        // 9. joint 0 -> 2.7, joints 1/2 -> 0, joint 3 -> 1.0 together (disabled)
+        // {{{0, 2.7f}, {1, 0.f}, {2, 0.f}, {3, 1.0f}},
+        //  "joint 0 -> 2.7, joint 1 -> 0, joint 2 -> 0, joint 3 -> 1.0", pause},
+        {{{0, 0.f}, {1, 0.2f}, {3, 0.5f}}, "joint 0 -> 0, joint 3 -> 0.5", pause},
         {{{4, hi(4)}}, "joint 4 -> max limit", pause},
     };
     constexpr float kJoint3ReturnSpeed = 2.0f;  // slower speed for step 11
@@ -429,13 +453,17 @@ int main(int argc, char** argv) {
     std::signal(SIGINT, onSignal);
     std::signal(SIGTERM, onSignal);
 
+    const std::string calib_path =
+        (opt.hand == Hand::Left) ? kLeftJointCalibPath : kRightJointCalibPath;
+
     ArmMotorBus bus;
-    if (!bus.open(opt.port, opt.baud)) {
+    if (!bus.open(opt.port, opt.baud, calib_path)) {
         return 1;
     }
 
     std::cout << "R1 arm motion demo\n"
-              << "  port=" << opt.port << " kp=" << opt.kp << " kd=" << opt.kd
+              << "  hand=" << (opt.hand == Hand::Left ? "left" : "right")
+              << " port=" << opt.port << " kp=" << opt.kp << " kd=" << opt.kd
               << " speed=" << opt.speed << " wrist_speed=" << opt.wrist_speed
               << " rad/s rate=" << opt.rate_hz << " Hz\n";
 

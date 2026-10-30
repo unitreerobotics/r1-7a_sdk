@@ -7,7 +7,9 @@
 
 constexpr int kArmJointCount = 7;
 constexpr int kArmDefaultBaudrate = 6000000;
-constexpr const char* kDefaultJointCalibPath = "../config/joint_calib.txt";
+constexpr const char* kDefaultJointCalibPath = "../config/joint_calib_right.txt";
+constexpr const char* kRightJointCalibPath = "../config/joint_calib_right.txt";
+constexpr const char* kLeftJointCalibPath = "../config/joint_calib_left.txt";
 
 /**
  * URDF joint frame <-> motor frame:

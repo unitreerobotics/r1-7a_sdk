@@ -20,10 +20,11 @@ void onSignal(int) {
     g_running = false;
 }
 
-enum class RunMode { None, Foc, Stop, ZeroTorque, Clear, Reset, Home, Goto };
+enum class RunMode { None, Foc, Stop, ZeroTorque, Clear, Reset, Home, Goto, GotoHold };
+enum class Hand { None, Right, Left };
 
 struct Options {
-    std::string port = "/dev/ttyUSB3";
+    std::string port = "/dev/ttyUSB0";
     int baud = kArmDefaultBaudrate;
     float kp = 60.f;
     float kd = 0.5f;
@@ -32,17 +33,18 @@ struct Options {
     int hold_ms = 0;  // FOC hold after reaching target; 0 = stop immediately
     int move_ms = 3000;
     RunMode mode = RunMode::None;
+    Hand hand = Hand::None;
     std::array<float, kArmJointCount> q_target{};
     bool q_target_set = false;
 };
 
 const char* kExclusiveCmdHint =
     "Use only one of --foc / --stop / --zero-torque / --clear / --reset / "
-    "--home / --goto\n";
+    "--home / --goto / --goto-hold\n";
 
 void printUsage(const char* argv0) {
     std::cout
-        << "Usage: " << argv0 << " <command> [options]\n"
+        << "Usage: " << argv0 << " <command> [-r|-l] [options]\n"
         << "Commands (exactly one required):\n"
         << "  --foc           FOC hold current pose until Ctrl-C\n"
         << "  --stop          send mode 0 stop, then exit\n"
@@ -51,6 +53,10 @@ void printUsage(const char* argv0) {
         << "  --reset         reset motors, then exit\n"
         << "  --home          FOC move all joints to q=0, then stop\n"
         << "  --goto          FOC move to --q targets, then stop\n"
+        << "  --goto-hold     FOC move to --q targets, then hold until Ctrl-C\n"
+        << "Hand (optional, default None):\n"
+        << "  -r, --right     right arm (calib " << kRightJointCalibPath << ")\n"
+        << "  -l, --left      left arm (calib " << kLeftJointCalibPath << ")\n"
         << "Options:\n"
         << "  --port PATH     serial device (default /dev/ttyUSB3)\n"
         << "  --baud N        baudrate (default " << kArmDefaultBaudrate << ")\n"
@@ -85,6 +91,18 @@ bool parseArgs(int argc, char** argv, Options& opt) {
         if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
             printUsage(argv[0]);
             return false;
+        } else if (std::strcmp(argv[i], "-r") == 0 || std::strcmp(argv[i], "--right") == 0) {
+            if (opt.hand != Hand::None) {
+                std::cerr << "Use only one of -r / -l\n";
+                return false;
+            }
+            opt.hand = Hand::None;
+        } else if (std::strcmp(argv[i], "-l") == 0 || std::strcmp(argv[i], "--left") == 0) {
+            if (opt.hand != Hand::None) {
+                std::cerr << "Use only one of -r / -l\n";
+                return false;
+            }
+            opt.hand = Hand::Left;
         } else if (std::strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
             opt.port = argv[++i];
         } else if (std::strcmp(argv[i], "--baud") == 0) {
@@ -168,6 +186,12 @@ bool parseArgs(int argc, char** argv, Options& opt) {
                 return false;
             }
             opt.mode = RunMode::Goto;
+        } else if (std::strcmp(argv[i], "--goto-hold") == 0) {
+            if (opt.mode != RunMode::None) {
+                std::cerr << kExclusiveCmdHint;
+                return false;
+            }
+            opt.mode = RunMode::GotoHold;
         } else {
             std::cerr << "Unknown arg: " << argv[i] << std::endl;
             printUsage(argv[0]);
@@ -179,19 +203,24 @@ bool parseArgs(int argc, char** argv, Options& opt) {
         printUsage(argv[0]);
         return false;
     }
+    if (opt.hand == Hand::None) {
+        opt.hand = Hand::Right;  // default to right hand
+    }
     if (opt.rate_hz <= 0) {
         opt.rate_hz = 50;
     }
     if (opt.home_lead < 0.01f) {
         opt.home_lead = 0.01f;
     }
-    if (opt.mode == RunMode::Goto && !opt.q_target_set) {
-        std::cerr << "--goto requires --q with " << kArmJointCount
+    if ((opt.mode == RunMode::Goto || opt.mode == RunMode::GotoHold) &&
+        !opt.q_target_set) {
+        std::cerr << "--goto / --goto-hold requires --q with " << kArmJointCount
                   << " joint positions\n";
         return false;
     }
-    if (opt.q_target_set && opt.mode != RunMode::Goto) {
-        std::cerr << "--q is only valid with --goto\n";
+    if (opt.q_target_set && opt.mode != RunMode::Goto &&
+        opt.mode != RunMode::GotoHold) {
+        std::cerr << "--q is only valid with --goto / --goto-hold\n";
         return false;
     }
     return true;
@@ -414,7 +443,8 @@ int runCreepSequence(ArmMotorBus& bus,
                      const Options& opt,
                      const std::array<float, kArmJointCount>& q0,
                      const std::array<float, kArmJointCount>& q_target,
-                     const char* label) {
+                     const char* label,
+                     bool hold_forever = false) {
     float max_abs = 0.f;
     for (int i = 0; i < kArmJointCount; ++i) {
         max_abs = std::max(max_abs, std::fabs(q_target[i] - q0[i]));
@@ -504,6 +534,16 @@ int runCreepSequence(ArmMotorBus& bus,
         return creep_rc == 2 ? 0 : 1;
     }
 
+    if (hold_forever) {
+        std::cout << "Phase 3: FOC hold target until Ctrl-C\n";
+        runUntilStopped(bus, opt.rate_hz, [&]() {
+            sendFocPosition(bus, q_target, opt.kp, opt.kd);
+        });
+        shutdown(bus, opt.rate_hz);
+        std::cout << "Done.\n";
+        return 0;
+    }
+
     if (opt.hold_ms > 0) {
         std::cout << "Phase 3: FOC hold target (" << opt.hold_ms << " ms)\n";
         runFor(bus, opt.hold_ms, opt.rate_hz, [&](float) {
@@ -515,6 +555,8 @@ int runCreepSequence(ArmMotorBus& bus,
         printStates(bus.states());
     }
 
+    // Let last FOC replies finish before Phase 4 TX (avoids a systematic CRC at boundary).
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
     std::cout << "Phase 4: stop (mode 0)\n";
     runFor(bus, 500, opt.rate_hz, [&](float) { sendStop(bus); });
@@ -573,13 +615,17 @@ int main(int argc, char** argv) {
     std::signal(SIGINT, onSignal);
     std::signal(SIGTERM, onSignal);
 
+    const std::string calib_path =
+        (opt.hand == Hand::Left) ? kLeftJointCalibPath : kRightJointCalibPath;
+
     ArmMotorBus bus;
-    if (!bus.open(opt.port, opt.baud)) {
+    if (!bus.open(opt.port, opt.baud, calib_path)) {
         return 1;
     }
 
     std::cout << "ArmMotorBus low-level test\n"
-              << "  port=" << opt.port << " baud=" << opt.baud
+              << "  hand=" << (opt.hand == Hand::Left ? "left" : "right")
+              << " port=" << opt.port << " baud=" << opt.baud
               << " joints=" << kArmJointCount
               << " rate=" << opt.rate_hz << " Hz\n";
 
@@ -679,6 +725,12 @@ int main(int argc, char** argv) {
     if (opt.mode == RunMode::Goto) {
         return runCreepSequence(bus, opt, q0, opt.q_target,
                                 "--goto  creep to configured q");
+    }
+
+    if (opt.mode == RunMode::GotoHold) {
+        return runCreepSequence(bus, opt, q0, opt.q_target,
+                                "--goto-hold  creep to configured q and hold",
+                                /*hold_forever=*/true);
     }
 
     std::cerr << "Internal error: unhandled mode\n";
