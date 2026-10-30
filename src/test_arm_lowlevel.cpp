@@ -54,7 +54,7 @@ void printUsage(const char* argv0) {
         << "  --home          FOC move all joints to q=0, then stop\n"
         << "  --goto          FOC move to --q targets, then stop\n"
         << "  --goto-hold     FOC move to --q targets, then hold until Ctrl-C\n"
-        << "Hand (optional, default None):\n"
+        << "Hand (required):\n"
         << "  -r, --right     right arm (calib " << kRightJointCalibPath << ")\n"
         << "  -l, --left      left arm (calib " << kLeftJointCalibPath << ")\n"
         << "Options:\n"
@@ -96,7 +96,7 @@ bool parseArgs(int argc, char** argv, Options& opt) {
                 std::cerr << "Use only one of -r / -l\n";
                 return false;
             }
-            opt.hand = Hand::None;
+            opt.hand = Hand::Right;
         } else if (std::strcmp(argv[i], "-l") == 0 || std::strcmp(argv[i], "--left") == 0) {
             if (opt.hand != Hand::None) {
                 std::cerr << "Use only one of -r / -l\n";
@@ -204,7 +204,9 @@ bool parseArgs(int argc, char** argv, Options& opt) {
         return false;
     }
     if (opt.hand == Hand::None) {
-        opt.hand = Hand::Right;  // default to right hand
+        std::cerr << "A hand is required: use -r / --right or -l / --left\n";
+        printUsage(argv[0]);
+        return false;
     }
     if (opt.rate_hz <= 0) {
         opt.rate_hz = 50;

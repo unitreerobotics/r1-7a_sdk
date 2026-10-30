@@ -66,7 +66,7 @@ void printUsage(const char* argv0) {
            "repeated 3 times\n"
         << " 12. all joints -> 0\n"
         << " 13. stop (mode 0) and exit\n"
-        << "Hand (optional, default None):\n"
+        << "Hand (required):\n"
         << "  -r, --right       right arm (calib " << kRightJointCalibPath << ")\n"
         << "  -l, --left        left arm (calib " << kLeftJointCalibPath << ")\n"
         << "Options:\n"
@@ -95,7 +95,7 @@ bool parseArgs(int argc, char** argv, Options& opt) {
                 std::cerr << "Use only one of -r / -l\n";
                 return false;
             }
-            opt.hand = Hand::None;
+            opt.hand = Hand::Right;
         } else if (std::strcmp(argv[i], "-l") == 0 || std::strcmp(argv[i], "--left") == 0) {
             if (opt.hand != Hand::None) {
                 std::cerr << "Use only one of -r / -l\n";
@@ -134,7 +134,9 @@ bool parseArgs(int argc, char** argv, Options& opt) {
         opt.rate_hz = 100;
     }
     if (opt.hand == Hand::None) {
-        opt.hand = Hand::Right;  // default to right hand
+        std::cerr << "A hand is required: use -r / --right or -l / --left\n";
+        printUsage(argv[0]);
+        return false;
     }
     opt.speed = std::max(0.01f, opt.speed);
     opt.wrist_speed = std::max(0.01f, opt.wrist_speed);
@@ -418,7 +420,8 @@ StepResult runSequence(MotionDemo& demo, const Options& opt) {
         // 9. joint 0 -> 2.7, joints 1/2 -> 0, joint 3 -> 1.0 together (disabled)
         // {{{0, 2.7f}, {1, 0.f}, {2, 0.f}, {3, 1.0f}},
         //  "joint 0 -> 2.7, joint 1 -> 0, joint 2 -> 0, joint 3 -> 1.0", pause},
-        {{{0, 0.f}, {1, 0.2f}, {3, 0.5f}}, "joint 0 -> 0, joint 3 -> 0.5", pause},
+        {{{0, 0.f}, {1, 0.2f}}, "joint 0 -> 0, joint 1 -> 0.2", pause},
+        {{{3, 0.5f}}, "joint 3 -> 0.5", pause, opt.speed * 0.5f},
         {{{4, hi(4)}}, "joint 4 -> max limit", pause},
     };
     constexpr float kJoint3ReturnSpeed = 2.0f;  // slower speed for step 11
