@@ -1,8 +1,8 @@
-# r1-7a_sdk
+<h1 align="center">r1-7a_sdk</h1>
 
-[简体中文](README.md) | [English](README_en.md)
+<p align="center">简体中文 | [English](README_en.md)</p>
 
-R1 机械臂底层控制 SDK（IM6014 串行总线）。
+<p align="center">R1 机械臂底层控制 SDK（IM6014 串行总线）。</p>
 
 ### 预构建环境
 * 操作系统  (Ubuntu 20.04 LTS 或更高版本)

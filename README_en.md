@@ -1,8 +1,8 @@
-# r1-7a_sdk
+<h1 align="center">r1-7a_sdk</h1>
 
-[简体中文](README.md) | [English](README_en.md)
+<p align="center">[简体中文](README.md) | English</p>
 
-R1 robotic arm low-level control SDK (IM6014 serial bus).
+<p align="center">R1 robotic arm low-level control SDK (IM6014 serial bus).</p>
 
 ### Prebuild environment
 * OS  (Ubuntu 20.04 LTS or higher)
