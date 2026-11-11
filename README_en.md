@@ -2,7 +2,7 @@
 
 <p align="center"><a href="README.md">简体中文</a> |  <a href="README_en.md">English</a></p>
 
-<p align="center">R1 robotic arm low-level control SDK (IM6014 serial bus).</p>
+<p align="center">R1 robotic arm low-level control SDK.</p>
 
 ### Prebuild environment
 * OS  (Ubuntu 20.04 LTS or higher)
@@ -59,7 +59,6 @@ make
 Binaries are written to `bin/`:
 
 - `test_arm_lowlevel` — low-level FOC / stop / home / goto commands
-- `calibrate_joints` — joint calibration tool (URDF ↔ motor frame)
 - `demo_arm_motion` — pre-programmed joint motion demo
 
 ### Usage

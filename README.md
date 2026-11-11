@@ -2,7 +2,7 @@
 
 <p align="center"><a href="README.md">简体中文</a> | <a href="README_en.md">English</a></p>
 
-<p align="center">R1 机械臂底层控制 SDK（IM6014 串行总线）。</p>
+<p align="center">R1 机械臂底层控制 SDK。</p>
 
 ### 预构建环境
 * 操作系统  (Ubuntu 20.04 LTS 或更高版本)
@@ -59,7 +59,6 @@ make
 构建产物位于 `bin/` 目录：
 
 - `test_arm_lowlevel` — 底层 FOC / 停止 / 回零 / 目标位置命令
-- `calibrate_joints` — 关节标定工具（URDF ↔ 电机坐标系）
 - `demo_arm_motion` — 预设关节运动演示
 
 ### 使用说明

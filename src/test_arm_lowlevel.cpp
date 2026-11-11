@@ -28,7 +28,7 @@ struct Options {
     int baud = kArmDefaultBaudrate;
     float kp = 60.f;
     float kd = 0.5f;
-    float home_lead = 0.2f;  // max |q_cmd - q_meas| while homing / goto (rad)
+    float home_lead = 0.1f;  // max |q_cmd - q_meas| while homing / goto (rad)
     int rate_hz = 50;
     int hold_ms = 0;  // FOC hold after reaching target; 0 = stop immediately
     int move_ms = 3000;
