@@ -26,12 +26,30 @@ Serial access usually requires membership in the `dialout` group (or equivalent)
 
 ### Build examples
 
-To build the examples inside this repository:
+The project provides `build.sh` to select the target architecture and link the matching prebuilt `motor_controller` library automatically.
+
+```bash
+# x86_64
+./build.sh x86
+
+# aarch64
+./build.sh arm64
+```
+
+The script creates `build/`, runs CMake with the correct `MOTOR_CONTROLLER_LIB_DIR`, and builds the binaries.
+
+If you prefer to run CMake manually, you must specify `MOTOR_CONTROLLER_LIB_DIR` for the target architecture:
 
 ```bash
 mkdir build
 cd build
-cmake ..
+
+# x86_64
+cmake .. -DMOTOR_CONTROLLER_LIB_DIR=../thirdparty/motor_controller/lib/x86
+
+# aarch64
+cmake .. -DMOTOR_CONTROLLER_LIB_DIR=../thirdparty/motor_controller/lib/aarch64
+
 make
 ```
 
