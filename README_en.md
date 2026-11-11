@@ -1,32 +1,35 @@
 # r1-7a_sdk
-R1 机械臂底层控制 SDK（IM6014 串行总线）。
 
-### 预构建环境
-* 操作系统  (Ubuntu 20.04 LTS 或更高版本)
-* CPU  (aarch64 和 x86_64)
-* 编译器  (gcc 9.4.0)
+[简体中文](README.md) | [English](README_en.md)
 
-### 环境配置
+R1 robotic arm low-level control SDK (IM6014 serial bus).
 
-在构建或运行 SDK 之前，请确保已安装以下依赖：
+### Prebuild environment
+* OS  (Ubuntu 20.04 LTS or higher)
+* CPU  (aarch64 and x86_64)
+* Compiler  (gcc version 9.4.0)
 
-- CMake (3.10 或更高版本)
-- GCC (9.4.0)
+### Environment Setup
+
+Before building or running the SDK, ensure the following dependencies are installed:
+
+- CMake (version 3.10 or higher)
+- GCC (version 9.4.0)
 - Make
 - pthread
 
-在 Ubuntu 20.04 上，可通过以下命令安装所需软件包：
+You can install the required packages on Ubuntu 20.04 with:
 
 ```bash
 apt-get update
 apt-get install -y cmake g++ build-essential
 ```
 
-访问串口通常需要当前用户加入 `dialout` 组（或等效组），以便访问 `/dev/ttyUSB*`。
+Serial access usually requires membership in the `dialout` group (or equivalent) for `/dev/ttyUSB*`.
 
-### 构建示例
+### Build examples
 
-本项目提供 `build.sh` 脚本，用于选择目标架构并自动链接对应的预编译 `motor_controller` 库。
+The project provides `build.sh` to select the target architecture and link the matching prebuilt `motor_controller` library automatically.
 
 ```bash
 # x86_64
@@ -36,9 +39,9 @@ apt-get install -y cmake g++ build-essential
 ./build.sh arm64
 ```
 
-该脚本会创建 `build/` 目录，使用正确的 `MOTOR_CONTROLLER_LIB_DIR` 运行 CMake，并完成构建。
+The script creates `build/`, runs CMake with the correct `MOTOR_CONTROLLER_LIB_DIR`, and builds the binaries.
 
-如果你希望手动运行 CMake，则必须为目标架构指定 `MOTOR_CONTROLLER_LIB_DIR`：
+If you prefer to run CMake manually, you must specify `MOTOR_CONTROLLER_LIB_DIR` for the target architecture:
 
 ```bash
 mkdir build
@@ -53,46 +56,46 @@ cmake .. -DMOTOR_CONTROLLER_LIB_DIR=../thirdparty/motor_controller/lib/aarch64
 make
 ```
 
-构建产物位于 `bin/` 目录：
+Binaries are written to `bin/`:
 
-- `test_arm_lowlevel` — 底层 FOC / 停止 / 回零 / 目标位置命令
-- `calibrate_joints` — 关节标定工具（URDF ↔ 电机坐标系）
-- `demo_arm_motion` — 预设关节运动演示
+- `test_arm_lowlevel` — low-level FOC / stop / home / goto commands
+- `calibrate_joints` — joint calibration tool (URDF ↔ motor frame)
+- `demo_arm_motion` — pre-programmed joint motion demo
 
-### 使用说明
+### Usage
 
-默认串口为 `/dev/ttyUSB3`，波特率为 `6000000`。`test_arm_lowlevel` 和 `demo_arm_motion` 支持可选的手部标志：`-r` / `--right`（加载 `config/joint_calib_right.txt`，未指定时默认使用）或 `-l` / `--left`（加载 `config/joint_calib_left.txt`，为右手标定镜像后的副本）。关节标定文件路径相对于当前工作目录；从 `bin/` 运行时，默认使用 `../config/...` 路径。
+Default serial port is `/dev/ttyUSB3`, baudrate `6000000`. `test_arm_lowlevel` and `demo_arm_motion` accept an optional hand flag: `-r` / `--right` (loads `config/joint_calib_right.txt`, the default when no flag is given) or `-l` / `--left` (loads `config/joint_calib_left.txt`, a dir/offset-mirrored copy of the right-hand calib). Joint calibration paths are relative to the working directory; when run from `bin/`, the default `../config/...` paths are used.
 
-**保持当前位置（FOC）：**
+**Hold current pose (FOC):**
 
 ```bash
 cd bin
 ./test_arm_lowlevel --foc -r --port /dev/ttyUSB3
 ```
 
-**运动到 URDF 零位（home）：**
+**Move to URDF zero (home):**
 
 ```bash
 ./test_arm_lowlevel --home -r --kp 60
 ```
 
-**运动到目标位置（goto）：**
+**Move to a target pose (goto):**
 
 ```bash
 ./test_arm_lowlevel --goto -r --q 0 0 0 0 0 0 0 --kp 60
 ```
 
-**其他命令：** `--stop`、`--zero-torque`、`--clear`、`--reset`。每次运行只能使用一个命令；添加 `-r` 或 `-l` 选择手部。长时间运行模式下，按 Ctrl-C 会发送停止指令（mode 0）并退出。
+**Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run; add `-r` or `-l` to select the hand. Ctrl-C sends stop (mode 0) and exits for long-running modes.
 
-**运行预设运动演示：**
+**Run the pre-programmed motion demo:**
 
 ```bash
 cd bin
 ./demo_arm_motion -r --port /dev/ttyUSB3
 ```
 
-演示程序会等待 7 个关节全部反馈到位，然后在当前位置启用 FOC，并执行一段固定的余弦轨迹运动。使用 `-r` / `-l` 选择手部，`--speed` 和 `--wrist-speed` 调整关节速度，`--kp` / `--kd` 调整增益，`--rate` 调整控制频率（默认 100 Hz）。按 Ctrl-C 可停止所有电机并退出。
+The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand, `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
 
-### 说明
+### Notice
 
-本软件包通过 vendored 的 `thirdparty/motor_controller`（IM6014）以单串口总线驱动 7 自由度 R1 机械臂。对外公开的 `q` / `dq` / `tau` 使用 URDF 坐标系；坐标转换在 `ArmMotorBus` 层完成。
+This package drives a 7-DOF R1 arm over one serial bus via the vendored `thirdparty/motor_controller` (IM6014). Public `q` / `dq` / `tau` use the URDF frame; conversion happens at the `ArmMotorBus` edge.
