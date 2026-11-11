@@ -1,6 +1,6 @@
 <h1 align="center">r1-7a_sdk</h1>
 
-<p align="center"><a href="README.md">简体中文</a> | English</p>
+<p align="center"><a href="README.md">简体中文</a> |  <a href="README_en.md">English</a></p>
 
 <p align="center">R1 robotic arm low-level control SDK (IM6014 serial bus).</p>
 

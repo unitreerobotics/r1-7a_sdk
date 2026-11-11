@@ -1,6 +1,6 @@
 <h1 align="center">r1-7a_sdk</h1>
 
-<p align="center">简体中文 | <a href="README_en.md">English</a></p>
+<p align="center"><a href="README.md">简体中文</a> | <a href="README_en.md">English</a></p>
 
 <p align="center">R1 机械臂底层控制 SDK（IM6014 串行总线）。</p>
 
