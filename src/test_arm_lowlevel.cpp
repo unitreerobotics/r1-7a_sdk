@@ -36,6 +36,12 @@ struct Options {
     Hand hand = Hand::None;
     std::array<float, kArmJointCount> q_target{};
     bool q_target_set = false;
+    // Joint 7 (kGripperJointIndex) is an M4010 gripper, much weaker than the
+    // arm joints, so it gets its own softer FOC gains in code.
+    // Its URDF q is a linear stroke 0..0.044 m (calib scale 0.00816326 m/rad
+    // maps it onto motor output 0..5.38 rad).
+    float gripper_kp = 5.f;
+    float gripper_kd = 0.05f;
 };
 
 const char* kExclusiveCmdHint =
@@ -62,7 +68,12 @@ void printUsage(const char* argv0) {
         << "  --baud N        baudrate (default " << kArmDefaultBaudrate << ")\n"
         << "  --kp F          position gain Nm/rad (default 40; home/goto torque ~ kp*lead)\n"
         << "  --kd F          damping Nm/(rad/s) (default 0.5)\n"
-        << "  --q F0 .. F6    target joint positions rad (URDF; required by --goto)\n"
+        << "  --q F0 .. F" << (kArmJointCount - 1)
+        << "    target joint positions (URDF; required by --goto;\n"
+        << "                  F0..F6 rad, F" << (kArmJointCount - 1)
+        << " = gripper stroke m, 0..0.044)\n"
+        << "  --gripper-kp F  gripper (joint 7) position gain Nm/rad (default 5)\n"
+        << "  --gripper-kd F  gripper (joint 7) damping Nm/(rad/s) (default 0.05)\n"
         << "  --home-lead F   max cmd lead while --home/--goto (default 0.2 rad)\n"
         << "  --rate N        command rate Hz (default 50)\n"
         << "  --hold-ms N     FOC hold at target after home/goto (default 0 = end now)\n"
@@ -115,6 +126,14 @@ bool parseArgs(int argc, char** argv, Options& opt) {
             }
         } else if (std::strcmp(argv[i], "--kd") == 0) {
             if (!next(opt.kd)) {
+                return false;
+            }
+        } else if (std::strcmp(argv[i], "--gripper-kp") == 0) {
+            if (!next(opt.gripper_kp)) {
+                return false;
+            }
+        } else if (std::strcmp(argv[i], "--gripper-kd") == 0) {
+            if (!next(opt.gripper_kd)) {
                 return false;
             }
         } else if (std::strcmp(argv[i], "--home-lead") == 0) {
@@ -265,7 +284,9 @@ void printMotorStates(const std::array<ArmJointState, kArmJointCount>& s) {
 void sendFocPosition(ArmMotorBus& bus,
                      const std::array<float, kArmJointCount>& q,
                      float kp,
-                     float kd) {
+                     float kd,
+                     float gripper_kp,
+                     float gripper_kd) {
     std::array<ArmJointCmd, kArmJointCount> cmds{};
     for (int i = 0; i < kArmJointCount; ++i) {
         cmds[i].mode = 1;
@@ -273,8 +294,15 @@ void sendFocPosition(ArmMotorBus& bus,
         cmds[i].q = q[i];
         cmds[i].dq = 0.f;
         cmds[i].tau = 0.f;
-        cmds[i].kp = kp;
-        cmds[i].kd = kd;
+        // The gripper (joint 7) is an M4010, far weaker than the arm joints:
+        // drive it with its own softer gains instead of the arm kp/kd.
+        if (i == kGripperJointIndex) {
+            cmds[i].kp = gripper_kp;
+            cmds[i].kd = gripper_kd;
+        } else {
+            cmds[i].kp = kp;
+            cmds[i].kd = kd;
+        }
     }
     bus.step(cmds);
 }
@@ -375,10 +403,19 @@ int creepToTargets(ArmMotorBus& bus,
                    const std::array<float, kArmJointCount>& q_target,
                    float kp,
                    float kd,
+                   float gripper_kp,
+                   float gripper_kd,
                    float lead,
+                   float gripper_scale,
                    int timeout_ms,
                    int rate_hz) {
+    // Per-joint limits in URDF units. Arm joints use rad directly; the gripper
+    // q is meters (stroke 0..0.044), so its lead / done threshold are scaled to
+    // keep the same motor-output-frame semantics (torque ~ kp * lead).
     constexpr float kDoneRad = 0.07f;
+    const float gripper_done = kDoneRad * gripper_scale;  // ~0.6 mm
+    // 2x arm lead -> gripper creeps at ~2x speed (peak tau ~ gripper_kp*lead*2).
+    const float gripper_lead = 2.f * lead * gripper_scale;  // m
     using clock = std::chrono::steady_clock;
     const auto period = std::chrono::microseconds(1000000 / rate_hz);
     const auto deadline = clock::now() + std::chrono::milliseconds(timeout_ms);
@@ -404,13 +441,18 @@ int creepToTargets(ArmMotorBus& bus,
         for (int i = 0; i < kArmJointCount; ++i) {
             const float cur = meas[i].q;
             const float diff = q_target[i] - cur;
-            if (std::fabs(diff) > kDoneRad) {
+            const float joint_lead =
+                (i == kGripperJointIndex) ? gripper_lead : lead;
+            const float joint_done =
+                (i == kGripperJointIndex) ? gripper_done : kDoneRad;
+            if (std::fabs(diff) > joint_done) {
                 all_near = false;
             }
-            const float step = std::max(-lead, std::min(lead, diff));
+            const float step =
+                std::max(-joint_lead, std::min(joint_lead, diff));
             q[i] = cur + step;
         }
-        sendFocPosition(bus, q, kp, kd);
+        sendFocPosition(bus, q, kp, kd, gripper_kp, gripper_kd);
 
         if (all_near) {
             reached = true;
@@ -447,17 +489,28 @@ int runCreepSequence(ArmMotorBus& bus,
                      const std::array<float, kArmJointCount>& q_target,
                      const char* label,
                      bool hold_forever = false) {
+    // Gripper scale (m per motor-output rad) converts its stroke into
+    // output-frame rad so lead / timeout math matches the arm joints.
+    const float gripper_scale =
+        std::fabs(bus.jointCalibration(kGripperJointIndex).scale);
     float max_abs = 0.f;
     for (int i = 0; i < kArmJointCount; ++i) {
-        max_abs = std::max(max_abs, std::fabs(q_target[i] - q0[i]));
+        float d = std::fabs(q_target[i] - q0[i]);
+        if (i == kGripperJointIndex && gripper_scale > 1e-6f) {
+            d /= gripper_scale;  // m -> motor-output rad
+        }
+        max_abs = std::max(max_abs, d);
     }
     const float lead = opt.home_lead;
     const int creep_ms = estimateCreepTimeoutMs(max_abs, opt.move_ms);
 
     std::cout << "Command: " << label << "\n"
               << "  kp=" << opt.kp << " kd=" << opt.kd
-              << " lead=" << lead << " rad"
-              << " (~tau<=" << (opt.kp * lead) << " Nm)"
+              << " gripper kp=" << opt.gripper_kp << " kd=" << opt.gripper_kd
+              << " lead=" << lead << " rad (gripper " << (2.f * lead * gripper_scale)
+              << " m)"
+              << " (~tau<=" << (opt.kp * lead) << " Nm, gripper <="
+              << (2.f * opt.gripper_kp * lead) << " Nm)"
               << " timeout_ms=" << creep_ms
               << " (max|dq|=" << max_abs << " rad)\n"
               << "  target q:";
@@ -481,7 +534,7 @@ int runCreepSequence(ArmMotorBus& bus,
         auto next = clock::now();
         bool all_foc = false;
         while (g_running && clock::now() < deadline) {
-            sendFocPosition(bus, q0, opt.kp, opt.kd);
+            sendFocPosition(bus, q0, opt.kp, opt.kd, opt.gripper_kp, opt.gripper_kd);
             const auto st = bus.states();
             all_foc = true;
             for (int i = 0; i < kArmJointCount; ++i) {
@@ -527,7 +580,9 @@ int runCreepSequence(ArmMotorBus& bus,
 
     std::cout << "Phase 2: FOC creep to target (timeout " << creep_ms << " ms)\n";
     const int creep_rc =
-        creepToTargets(bus, q_target, opt.kp, opt.kd, lead, creep_ms, opt.rate_hz);
+        creepToTargets(bus, q_target, opt.kp, opt.kd, opt.gripper_kp,
+                       opt.gripper_kd, lead, gripper_scale, creep_ms,
+                       opt.rate_hz);
     if (creep_rc != 0) {
         sendStop(bus);
         bus.stop();
@@ -539,7 +594,8 @@ int runCreepSequence(ArmMotorBus& bus,
     if (hold_forever) {
         std::cout << "Phase 3: FOC hold target until Ctrl-C\n";
         runUntilStopped(bus, opt.rate_hz, [&]() {
-            sendFocPosition(bus, q_target, opt.kp, opt.kd);
+            sendFocPosition(bus, q_target, opt.kp, opt.kd, opt.gripper_kp,
+                            opt.gripper_kd);
         });
         shutdown(bus, opt.rate_hz);
         std::cout << "Done.\n";
@@ -549,7 +605,8 @@ int runCreepSequence(ArmMotorBus& bus,
     if (opt.hold_ms > 0) {
         std::cout << "Phase 3: FOC hold target (" << opt.hold_ms << " ms)\n";
         runFor(bus, opt.hold_ms, opt.rate_hz, [&](float) {
-            sendFocPosition(bus, q_target, opt.kp, opt.kd);
+            sendFocPosition(bus, q_target, opt.kp, opt.kd, opt.gripper_kp,
+                            opt.gripper_kd);
         });
         printStates(bus.states());
     } else {
@@ -702,9 +759,11 @@ int main(int argc, char** argv) {
 
     if (opt.mode == RunMode::Foc) {
         std::cout << "Command: --foc hold current pose  kp=" << opt.kp
-                  << " kd=" << opt.kd << " (Ctrl-C to stop)\n";
+                  << " kd=" << opt.kd << " gripper kp=" << opt.gripper_kp
+                  << " kd=" << opt.gripper_kd << " (Ctrl-C to stop)\n";
         runUntilStopped(bus, opt.rate_hz, [&]() {
-            sendFocPosition(bus, q0, opt.kp, opt.kd);
+            sendFocPosition(bus, q0, opt.kp, opt.kd, opt.gripper_kp,
+                            opt.gripper_kd);
         });
         shutdown(bus, opt.rate_hz);
         std::cout << "Done.\n";

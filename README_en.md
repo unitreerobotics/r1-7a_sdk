@@ -59,11 +59,10 @@ make
 Binaries are written to `bin/`:
 
 - `test_arm_lowlevel` — low-level FOC / stop / home / goto commands
-- `demo_arm_motion` — pre-programmed joint motion demo
 
 ### Usage
 
-Default serial port is `/dev/ttyUSB3`, baudrate `6000000`. `test_arm_lowlevel` and `demo_arm_motion` accept an optional hand flag: `-r` / `--right` (loads `config/joint_calib_right.txt`, the default when no flag is given) or `-l` / `--left` (loads `config/joint_calib_left.txt`, a dir/offset-mirrored copy of the right-hand calib). Joint calibration paths are relative to the working directory; when run from `bin/`, the default `../config/...` paths are used.
+Default serial port is `/dev/ttyUSB3`, baudrate `6000000`. `test_arm_lowlevel` accepts an optional hand flag: `-r` / `--right` (loads `config/joint_calib_right.txt`, the default when no flag is given) or `-l` / `--left` (loads `config/joint_calib_left.txt`, a dir/offset-mirrored copy of the right-hand calib). Joint calibration paths are relative to the working directory; when run from `bin/`, the default `../config/...` paths are used.
 
 **Hold current pose (FOC):**
 
@@ -81,20 +80,13 @@ cd bin
 **Move to a target pose (goto):**
 
 ```bash
-./test_arm_lowlevel --goto -r --q 0 0 0 0 0 0 0 --kp 60
+./test_arm_lowlevel --goto -r --q 0 0 0 0 0 0 0 0 --kp 60
 ```
 
 **Other commands:** `--stop`, `--zero-torque`, `--clear`, `--reset`. Use exactly one command per run; add `-r` or `-l` to select the hand. Ctrl-C sends stop (mode 0) and exits for long-running modes.
 
-**Run the pre-programmed motion demo:**
-
-```bash
-cd bin
-./demo_arm_motion -r --port /dev/ttyUSB3
-```
-
-The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand, `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
+The 8th motor (joint 7) is the end-effector motor. Its actual motion range is `0-5.38`, which is mapped to `0-0.044` in the URDF frame after calibration scaling.
 
 ### Notice
 
-This package drives a 7-DOF R1 arm over one serial bus via the vendored `thirdparty/motor_controller` (IM6014). Public `q` / `dq` / `tau` use the URDF frame; conversion happens at the `ArmMotorBus` edge.
+This package drives an 8-DOF R1 arm over one serial bus via the vendored `thirdparty/motor_controller` (IM6014). Public `q` / `dq` / `tau` use the URDF frame; conversion happens at the `ArmMotorBus` edge.

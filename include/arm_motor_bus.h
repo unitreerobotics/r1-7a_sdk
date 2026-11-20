@@ -5,7 +5,8 @@
 #include <memory>
 #include <string>
 
-constexpr int kArmJointCount = 7;
+constexpr int kArmJointCount = 8;
+constexpr int kGripperJointIndex = 7;  // M4010 gripper, uses dex-1 / Unitree HG protocol
 constexpr int kArmDefaultBaudrate = 6000000;
 constexpr const char* kDefaultJointCalibPath = "../config/joint_calib_right.txt";
 constexpr const char* kRightJointCalibPath = "../config/joint_calib_right.txt";

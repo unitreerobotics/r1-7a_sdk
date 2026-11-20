@@ -35,15 +35,12 @@ add_executable(test_arm_lowlevel
 #   src/calibrate_joints.cpp
 #   src/arm_motor_bus.cpp
 # )
-add_executable(demo_arm_motion
-  src/demo_arm_motion.cpp
-  src/arm_motor_bus.cpp
-)
 
-foreach(tgt test_arm_lowlevel demo_arm_motion)
+foreach(tgt test_arm_lowlevel)
   target_include_directories(${tgt} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${MOTOR_CONTROLLER_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/thirdparty/dex-1/include
   )
   target_link_libraries(${tgt} PRIVATE
     ${MOTOR_CONTROLLER_LIB}
@@ -52,7 +49,7 @@ foreach(tgt test_arm_lowlevel demo_arm_motion)
 endforeach()
 
 set_target_properties(
-  test_arm_lowlevel demo_arm_motion
+  test_arm_lowlevel
   PROPERTIES
   BUILD_RPATH "${MOTOR_CONTROLLER_LIB_DIR}"
   INSTALL_RPATH "$ORIGIN/../thirdparty/motor_controller/lib"
