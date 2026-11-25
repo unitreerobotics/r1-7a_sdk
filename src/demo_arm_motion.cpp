@@ -24,12 +24,12 @@ void onSignal(int) {
     g_running = false;
 }
 
-// URDF joint limits (rad); index 0 = base joint (J1) ... 6 = wrist end (J7).
-constexpr JointArray kLowerLimit = {-2.723f, 0.f, -0.349f, 0.f, -2.269f, -0.785f, -1.571f};
-constexpr JointArray kUpperLimit = {2.723f, 3.1416f, 3.491f, 3.1415f, 2.269f, 0.785f, 1.571f};
+// URDF joint limits (rad); index 0 = base joint (J1) ... 6 = wrist end (J7), 7 = gripper (M4010).
+constexpr JointArray kLowerLimit = {-2.723f, 0.f, -0.349f, 0.f, -2.269f, -0.785f, -1.571f, 0.0f};
+constexpr JointArray kUpperLimit = {2.723f, 3.1416f, 3.491f, 3.1415f, 2.269f, 0.785f, 1.571f, 0.044f};
 
 constexpr float kPi = 3.14159265f;
-constexpr int kFirstWristJoint = 4;  // joints 4..6 use --wrist-speed
+constexpr int kFirstWristJoint = 4;  // joints 4..6 use --wrist-speed (gripper is not moved by the demo)
 
 enum class Hand { None, Right, Left };
 
@@ -51,7 +51,7 @@ struct Options {
 void printUsage(const char* argv0) {
     std::cout
         << "Usage: " << argv0 << " [-r|-l] [options]\n"
-        << "Demo sequence (joint 0 = base ... joint 6 = wrist end):\n"
+        << "Demo sequence (joint 0 = base ... joint 6 = wrist end, joint 7 = gripper):\n"
         << "  1. joint 0 -> -2.7 rad and joint 3 -> 1.0 rad together\n"
         << "  2. joint 6 -> min limit -> max limit -> 0\n"
         << "  3. joint 5 -> min limit -> max limit -> 0\n"

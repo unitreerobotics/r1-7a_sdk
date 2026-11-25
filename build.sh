@@ -7,11 +7,13 @@ BUILD_DIR="$PROJECT_DIR/build"
 MOTOR_LIB_DIR="$PROJECT_DIR/thirdparty/motor_controller/lib"
 
 show_usage() {
-    echo "Usage: $0 [x86|arm64|aarch64]"
+    echo "Usage: $0 [x86|arm64|aarch64] [-with-algo|--with-algo]"
     echo ""
     echo "Platforms:"
     echo "  x86   - Link x86 motor_controller library"
     echo "  arm64 - Link aarch64 motor_controller library"
+    echo ""
+    echo "  -with-algo, --with-algo - Also build gravity_compensation and roboplan_record"
     echo ""
     echo "If no platform is specified, you will be prompted to choose one."
 }
@@ -29,18 +31,27 @@ select_platform() {
 }
 
 PLATFORM=""
+BUILD_WITH_ALGO="OFF"
 
-if [ $# -gt 1 ]; then
-    show_usage
-    exit 1
-elif [ $# -eq 1 ]; then
-    case "$1" in
-        x86|x86_64|amd64) PLATFORM="x86" ;;
-        arm64|aarch64)    PLATFORM="arm64" ;;
+for arg in "$@"; do
+    case "$arg" in
+        -with-algo|--with-algo) BUILD_WITH_ALGO="ON" ;;
         -h|--help)        show_usage; exit 0 ;;
-        *)                echo "Unknown platform: $1" >&2; show_usage; exit 1 ;;
+        x86|x86_64|amd64|arm64|aarch64)
+            if [ -n "$PLATFORM" ]; then
+                echo "Specify only one platform." >&2
+                exit 1
+            fi
+            case "$arg" in
+                x86|x86_64|amd64) PLATFORM="x86" ;;
+                arm64|aarch64)    PLATFORM="arm64" ;;
+            esac
+            ;;
+        *) echo "Unknown argument: $arg" >&2; show_usage; exit 1 ;;
     esac
-else
+done
+
+if [ -z "$PLATFORM" ]; then
     select_platform
 fi
 
@@ -49,9 +60,11 @@ echo "Building for platform: $PLATFORM"
 case "$PLATFORM" in
     x86)
         MOTOR_LIB_SUBDIR="x86"
+        ARM_TARGET_PLATFORM="x86_64"
         ;;
     arm64)
         MOTOR_LIB_SUBDIR="aarch64"
+        ARM_TARGET_PLATFORM="aarch64"
         ;;
 esac
 
@@ -65,8 +78,16 @@ fi
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-cmake -S "$PROJECT_DIR" -B "$BUILD_DIR" \
+CMAKE_ARGS=(
     -DMOTOR_CONTROLLER_LIB_DIR="$SELECTED_MOTOR_LIB_DIR"
+    -DBUILD_WITH_ALGO="$BUILD_WITH_ALGO"
+)
+if [ "$BUILD_WITH_ALGO" = "ON" ]; then
+    CMAKE_ARGS+=(-DARM_TARGET_PLATFORM="$ARM_TARGET_PLATFORM")
+fi
+
+cmake -S "$PROJECT_DIR" -B "$BUILD_DIR" \
+    "${CMAKE_ARGS[@]}"
 
 cmake --build "$BUILD_DIR"
 

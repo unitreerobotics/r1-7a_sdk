@@ -41,6 +41,17 @@ The project provides `build.sh` to select the target architecture and link the m
 
 The script creates `build/`, runs CMake with the correct `MOTOR_CONTROLLER_LIB_DIR`, and builds the binaries.
 
+Algorithm examples are disabled by default. Add `-with-algo` (also accepted as `--with-algo`) to build `gravity_compensation` and `roboplan_record` (teach-and-play recording and replay) in `bin/`.
+
+```bash
+sudo apt-get install -y libeigen3-dev libboost-filesystem-dev liburdfdom-dev
+./build.sh x86 -with-algo
+# Build on an aarch64 host
+./build.sh arm64 -with-algo
+```
+
+The algorithm examples link the prebuilt Pinocchio libraries under `algo/pinocchio/lib/<architecture>/`. When configuring CMake manually, add `-DBUILD_WITH_ALGO=ON` to the command for your architecture below. CMake selects Pinocchio for the compiler's target architecture by default. You can also specify it with `-DARM_TARGET_PLATFORM=x86_64` or `-DARM_TARGET_PLATFORM=aarch64`. Cross-compilation also requires a matching CMake toolchain.
+
 If you prefer to run CMake manually, you must specify `MOTOR_CONTROLLER_LIB_DIR` for the target architecture:
 
 ```bash

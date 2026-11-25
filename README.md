@@ -41,6 +41,17 @@ apt-get install -y cmake g++ build-essential
 
 该脚本会创建 `build/` 目录，使用正确的 `MOTOR_CONTROLLER_LIB_DIR` 运行 CMake，并完成构建。
 
+算法示例默认关闭。添加 `-with-algo`（也支持 `--with-algo`）后，`bin/` 中还会生成 `gravity_compensation`（重力补偿）和 `roboplan_record`（示教录制与回放）。
+
+```bash
+sudo apt-get install -y libeigen3-dev libboost-filesystem-dev liburdfdom-dev
+./build.sh x86 -with-algo
+# 在 aarch64 主机上构建
+./build.sh arm64 -with-algo
+```
+
+算法构建从 `algo/pinocchio/lib/<架构>/` 链接预编译的 Pinocchio 库。手动配置 CMake 时，在下方对应架构的命令中追加 `-DBUILD_WITH_ALGO=ON`。CMake 默认按编译目标架构选择 Pinocchio，也可以用 `-DARM_TARGET_PLATFORM=x86_64` 或 `-DARM_TARGET_PLATFORM=aarch64` 显式指定。跨架构构建还需要为 CMake 提供对应的工具链。
+
 如果你希望手动运行 CMake，则必须为目标架构指定 `MOTOR_CONTROLLER_LIB_DIR`：
 
 ```bash
