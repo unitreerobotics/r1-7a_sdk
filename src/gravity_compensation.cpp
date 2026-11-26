@@ -40,8 +40,8 @@ constexpr const char* kRightUrdfPath =
     "../urdf/R1_Robotic_Arm_R_V1.2-1023/R1_Robotic_Arm_V1.2/R1_Robotic_Arm/urdf/"
     "R1_Robotic_Arm.urdf";
 constexpr const char* kLeftUrdfPath =
-    "../urdf/R1_Robotic_Arm_L_V1.0-1027/R1_Robotic_Arm_L_V1.0-1027/meshes/"
-    "R1_Robotic_Arm_L_V1.0-1027.urdf";
+    "../urdf/R1_Robotic_Arm_L_V1.1-1126/R1_Robotic_Arm_L_V1.1-1126/meshes/"
+    "R1_Robotic_Arm_L_V1.1-1126.urdf";
 
 enum class Hand { None, Right, Left };
 
