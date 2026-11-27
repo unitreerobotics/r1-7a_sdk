@@ -7,14 +7,12 @@
 ### Prebuild environment
 * OS  (Ubuntu 24.04 LTS required)
 * CPU  (aarch64 and x86_64)
-* Compiler  (gcc version 9.4.0)
 
 ### Environment Setup
 
 Before building or running the SDK, ensure the following dependencies are installed:
 
-- CMake (version 3.10 or higher)
-- GCC (version 9.4.0)
+- CMake (version 3.28 or higher)
 - Make
 - pthread
 
