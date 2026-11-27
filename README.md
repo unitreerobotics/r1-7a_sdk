@@ -5,7 +5,7 @@
 <p align="center">R1 机械臂底层控制 SDK。</p>
 
 ### 预构建环境
-* 操作系统  (Ubuntu 20.04 LTS 或更高版本)
+* 操作系统  (必须使用 Ubuntu 24.04 LTS)
 * CPU  (aarch64 和 x86_64)
 * 编译器  (gcc 9.4.0)
 
@@ -18,7 +18,7 @@
 - Make
 - pthread
 
-在 Ubuntu 20.04 上，可通过以下命令安装所需软件包：
+在 Ubuntu 24.04 上，可通过以下命令安装所需软件包：
 
 ```bash
 apt-get update
@@ -41,7 +41,7 @@ apt-get install -y cmake g++ build-essential
 
 该脚本会创建 `build/` 目录，使用正确的 `MOTOR_CONTROLLER_LIB_DIR` 运行 CMake，并完成构建。
 
-算法示例默认关闭。添加 `-with-algo`（也支持 `--with-algo`）后，`bin/` 中还会生成 `gravity_compensation`（重力补偿）和 `roboplan_record`（示教录制与回放）。
+算法示例默认关闭。添加 `-with-algo`（也支持 `--with-algo`）后，`bin/` 中还会生成 `gravity_compensation`（重力补偿）。
 
 ```bash
 sudo apt-get install -y libeigen3-dev libboost-filesystem-dev liburdfdom-dev
@@ -105,6 +105,16 @@ cd bin
 ```
 
 演示程序会等待 7 个关节全部反馈到位，然后在当前位置启用 FOC，并执行一段固定的余弦轨迹运动。使用 `-r` / `-l` 选择手部，`--speed` 和 `--wrist-speed` 调整关节速度，`--kp` / `--kd` 调整增益，`--rate` 调整控制频率（默认 100 Hz）。按 Ctrl-C 可停止所有电机并退出。
+
+**运行重力补偿（需使用 `-with-algo` 构建）：**
+
+```bash
+cd bin
+./gravity_compensation -r  # 右臂
+./gravity_compensation -l  # 左臂
+```
+
+`-r` / `-l` 分别加载对应手臂的标定文件和 URDF；未指定时默认右臂。启动后等待 7 个关节反馈，再进入重力补偿模式；按 Ctrl-C 发送停止指令并退出。操作前请确保机械臂有支撑，避免突然下落。
 
 ### 说明
 

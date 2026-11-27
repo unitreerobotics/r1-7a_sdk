@@ -5,7 +5,7 @@
 <p align="center">R1 robotic arm low-level control SDK.</p>
 
 ### Prebuild environment
-* OS  (Ubuntu 20.04 LTS or higher)
+* OS  (Ubuntu 24.04 LTS required)
 * CPU  (aarch64 and x86_64)
 * Compiler  (gcc version 9.4.0)
 
@@ -18,7 +18,7 @@ Before building or running the SDK, ensure the following dependencies are instal
 - Make
 - pthread
 
-You can install the required packages on Ubuntu 20.04 with:
+You can install the required packages on Ubuntu 24.04 with:
 
 ```bash
 apt-get update
@@ -41,7 +41,7 @@ The project provides `build.sh` to select the target architecture and link the m
 
 The script creates `build/`, runs CMake with the correct `MOTOR_CONTROLLER_LIB_DIR`, and builds the binaries.
 
-Algorithm examples are disabled by default. Add `-with-algo` (also accepted as `--with-algo`) to build `gravity_compensation` and `roboplan_record` (teach-and-play recording and replay) in `bin/`.
+Algorithm examples are disabled by default. Add `-with-algo` (also accepted as `--with-algo`) to build `gravity_compensation` in `bin/`.
 
 ```bash
 sudo apt-get install -y libeigen3-dev libboost-filesystem-dev liburdfdom-dev
@@ -105,6 +105,16 @@ cd bin
 ```
 
 The demo waits for feedback from all 7 joints, enables FOC at the current pose, and then runs a fixed sequence of cosine-profile moves. Use `-r` / `-l` to select the hand, `--speed` and `--wrist-speed` to adjust joint velocities, `--kp` / `--kd` to tune gains, and `--rate` to change the control loop frequency (default 100 Hz). Ctrl-C stops all motors and exits.
+
+**Run gravity compensation (requires building with `-with-algo`):**
+
+```bash
+cd bin
+./gravity_compensation -r  # right arm
+./gravity_compensation -l  # left arm
+```
+
+`-r` / `-l` load the calibration file and URDF for the selected arm; the default is the right arm. The program waits for feedback from all 7 joints before entering gravity compensation mode. Ctrl-C sends a stop command and exits. Make sure the arm is supported before starting to prevent it from falling suddenly.
 
 ### Notice
 
