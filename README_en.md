@@ -97,4 +97,8 @@ The demo waits for feedback from all 7 joints, enables FOC at the current pose, 
 
 ### Notice
 
+**Recovering after an unexpected exit**
+
+If the control program exits unexpectedly and the motors receive no new commands within the timeout period, communication timeout protection triggers and the motors enter damping mode. To resume control, first switch the motors to Stop mode (`mode=0`), then re-enable FOC control.
+
 This package drives a 7-DOF R1 arm over one serial bus via the vendored `thirdparty/motor_controller` (IM6014). Public `q` / `dq` / `tau` use the URDF frame; conversion happens at the `ArmMotorBus` edge.
