@@ -116,6 +116,23 @@ cd bin
 
 `-r` / `-l` load the calibration file and URDF for the selected arm; the default is the right arm. The program waits for feedback from all 7 joints before entering gravity compensation mode. Ctrl-C sends a stop command and exits. Make sure the arm is supported before starting to prevent it from falling suddenly.
 
+**Record and replay motions (requires building with `-with-algo`):**
+
+```bash
+cd bin
+./roboplan_record -r  # right arm
+./roboplan_record -l  # left arm
+```
+
+On startup, the arm first enters zero-gravity mode:
+
+1. Press ENTER to start recording, then move the arm by hand.
+2. Press ENTER again to stop recording. The arm slowly returns to the recorded start pose, then automatically replays the motion.
+3. After replay, the arm automatically returns to zero-gravity mode. Press ENTER to enter the next cycle, or type `q` and press ENTER to quit.
+4. Return to step 1 to repeat recording and replay.
+
+Note: With the current program, after pressing ENTER in step 3, you must press ENTER again in step 1 to start the next recording. Each trajectory is saved to `csv/recorded_traj.csv` by default; use `-o PATH` to change the output path. Make sure the arm is supported before starting to prevent it from falling suddenly.
+
 ### Notice
 
 This package drives a 7-DOF R1 arm over one serial bus via the vendored `thirdparty/motor_controller` (IM6014). Public `q` / `dq` / `tau` use the URDF frame; conversion happens at the `ArmMotorBus` edge.
